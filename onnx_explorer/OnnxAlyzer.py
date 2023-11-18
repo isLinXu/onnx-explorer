@@ -23,30 +23,46 @@ class ONNXModelAnalyzer:
 
     @staticmethod
     def save_format_txt(output_info, output_file):
+        '''
+        :param output_info:
+        :param output_file:
+        :return:
+        1.summary
+        2.parameter_data_types
+        3.operators-lists
+        4.operators
+        5.inputs
+        6.outputs
+        7.node_details
+        '''
         with open(output_file + ".txt", "w") as f:
             f.write(f"{logo_str}\n")
-            f.write("================summary================\n")
+            f.write("================================【summary】================================\n")
             for key, value in output_info["summary"].items():
                 f.write(f"| {key}: {value}\n")
 
-            f.write("=====parameter_data_types=====\n")
+            f.write("=====================【parameter_data_types】=====================\n")
             for key, value in output_info["parameter_data_types"].items():
                 f.write(f"| {key}: {value}\n")
 
-            f.write("===========operators===========\n")
+            f.write("===========================【operators-lists】===========================\n")
+            operators_list = output_info["operators_list"]
+            f.write(f"| {operators_list}\n")
+
+            f.write("===========================【operators】===========================\n")
             for key, value in output_info["operators"].items():
                 f.write(f"| {key}: count={value['count']}, percentage={value['percentage']}\n")
 
-            f.write("===========inputs==============\n")
+            f.write("===========================【inputs】==============================\n")
             for input_info in output_info["inputs"]:
                 f.write(f"| name={input_info['name']}, dtype={input_info['dtype']}, shape={input_info['shape']}\n")
 
-            f.write("===========outputs=============\n")
+            f.write("===========================【outputs】=============================\n")
             for output_info in output_info["outputs"]:
                 f.write(f"name={output_info['name']}, dtype={output_info['dtype']}, shape={output_info['shape']}\n")
 
             if "node_details" in output_info:
-                f.write("=========node_details==========\n")
+                f.write("=========================================【node_details】==========================================\n")
                 for node_detail in output_info["node_details"]:
                     f.write(f"op_type={node_detail['op_type']}, name={node_detail['name']}\n")
                     f.write(f"inputs: {', '.join(node_detail['inputs'])}\n")
@@ -167,6 +183,7 @@ class ONNXModelAnalyzer:
             "parameter_data_types": {dtype_name: count for dtype_name, count in dtype_count.items()},
             "operators": {op_type: {"count": count, "percentage": op_percentage[op_type]} for op_type, count in
                           op_count.items()},
+            "operators_list": list(op_count.keys()),
             "inputs": [{"name": input_tensor.name,
                         "dtype": ONNXModelAnalyzer.get_dtype_name(input_tensor.type.tensor_type.elem_type),
                         "shape": [dim.dim_value for dim in input_tensor.type.tensor_type.shape.dim]} for input_tensor in
@@ -215,6 +232,10 @@ class ONNXModelAnalyzer:
 
 if __name__ == '__main__':
     # Usage example
+    # model_path = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov3/yolov3-spp.onnx"
+    # output_file = "/Users/gatilin/PycharmProjects/onnx-easy-tools/weights/yolov3-spp/yolov3-spp"
+    # model_path = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov3/yolov3-tiny.onnx"
+    # output_file = "/Users/gatilin/PycharmProjects/onnx-easy-tools/weights/yolov3-tiny/yolov3"
     model_path = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov3/yolov3.onnx"
-    output_file = "/Users/gatilin/PycharmProjects/onnx-easy-tools/weights/yolov3/yolov3_analysis"
+    output_file = "/Users/gatilin/PycharmProjects/onnx-easy-tools/weights/yolov3/yolov3"
     ONNXModelAnalyzer.analyze_onnx_model(model_path, save_to_file=True, output_file=output_file, show_node_details=True)
