@@ -1,8 +1,10 @@
+import csv
 import os
 import json
 import onnx
 from collections import defaultdict
 from onnx import numpy_helper
+
 
 def get_dtype_name(tensor_dtype):
     '''
@@ -11,6 +13,93 @@ def get_dtype_name(tensor_dtype):
     :return:
     '''
     return onnx.TensorProto.DataType.Name(tensor_dtype)
+
+
+def save_format_txt(output_info, output_file):
+    with open(output_file + ".txt", "w") as f:
+        logo_str = "██████╗ ███╗   ██╗███╗   ██╗██╗  ██╗     ███████╗ █████╗ ███████╗██╗   ██╗  ████████╗ ██████╗  ██████╗ ██╗     ███████╗\n" + \
+                   "██╔═══██╗████╗  ██║████╗  ██║╚██╗██╔╝     ██╔════╝██╔══██╗██╔════╝╚██╗ ██╔╝  ╚══██╔══╝██╔═══██╗██╔═══██╗██║     ██╔════╝\n" + \
+                   "██║   ██║██╔██╗ ██║██╔██╗ ██║ ╚███╔╝█████╗█████╗  ███████║███████╗ ╚████╔╝█████╗██║   ██║   ██║██║   ██║██║     ███████╗\n" + \
+                   "██║   ██║██║╚██╗██║██║╚██╗██║ ██╔██╗╚════╝██╔══╝  ██╔══██║╚════██║  ╚██╔╝ ╚════╝██║   ██║   ██║██║   ██║██║     ╚════██║\n" + \
+                   "╚██████╔╝██║ ╚████║██║ ╚████║██╔╝ ██╗     ███████╗██║  ██║███████║   ██║        ██║   ╚██████╔╝╚██████╔╝███████╗███████║\n" + \
+                   "╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═══╝╚═╝  ╚═╝     ╚══════╝╚═╝  ╚═╝╚══════╝   ╚═╝        ╚═╝    ╚═════╝  ╚═════╝ ╚══════╝╚══════╝"
+        f.write(f"{logo_str}\n")
+        f.write("================summary================\n")
+        for key, value in output_info["summary"].items():
+            f.write(f"| {key}: {value}\n")
+        # f.write("\n")
+
+        f.write("=====parameter_data_types=====\n")
+        for key, value in output_info["parameter_data_types"].items():
+            f.write(f"| {key}: {value}\n")
+        # f.write("\n")
+
+        f.write("===========operators===========\n")
+        for key, value in output_info["operators"].items():
+            f.write(f"| {key}: count={value['count']}, percentage={value['percentage']}\n")
+        # f.write("\n")
+
+        f.write("===========inputs==============\n")
+        for input_info in output_info["inputs"]:
+            f.write(f"| name={input_info['name']}, dtype={input_info['dtype']}, shape={input_info['shape']}\n")
+        # f.write("\n")
+
+        f.write("===========outputs=============\n")
+        for output_info in output_info["outputs"]:
+            f.write(f"name={output_info['name']}, dtype={output_info['dtype']}, shape={output_info['shape']}\n")
+        # f.write("\n")
+
+        if "node_details" in output_info:
+            f.write("=========node_details==========\n")
+            for node_detail in output_info["node_details"]:
+                f.write(f"op_type={node_detail['op_type']}, name={node_detail['name']}\n")
+                f.write(f"inputs: {', '.join(node_detail['inputs'])}\n")
+                f.write(f"outputs: {', '.join(node_detail['outputs'])}\n")
+                f.write("attributes:\n")
+                for attr_name, attr_value in node_detail["attributes"].items():
+                    f.write(f"  {attr_name}: {attr_value}\n")
+                f.write("\n")
+
+
+def save_format_json(output_file, output_info):
+    with open(output_file + ".json", "w") as f:
+        json.dump(output_info, f, indent=2)
+    print(f"\nModel analysis saved to {output_file}.json")
+
+
+def save_format_csv(output_info, output_file):
+    with open(output_file + ".csv", "w", newline='') as f:
+        csv_writer = csv.writer(f)
+
+        csv_writer.writerow(["section", "key", "value"])
+
+        for key, value in output_info["summary"].items():
+            csv_writer.writerow(["summary", key, value])
+
+        for key, value in output_info["parameter_data_types"].items():
+            csv_writer.writerow(["parameter_data_types", key, value])
+
+        for key, value in output_info["operators"].items():
+            csv_writer.writerow(["operators", key, f"count={value['count']}, percentage={value['percentage']}"])
+
+        for input_info in output_info["inputs"]:
+            csv_writer.writerow(
+                ["inputs", input_info['name'], f"dtype={input_info['dtype']}, shape={input_info['shape']}"])
+
+        for output_info in output_info["outputs"]:
+            csv_writer.writerow(
+                ["outputs", output_info['name'], f"dtype={output_info['dtype']}, shape={output_info['shape']}"])
+
+        if "node_details" in output_info:
+            for node_detail in output_info["node_details"]:
+                csv_writer.writerow(["node_details", node_detail['name'], f"op_type={node_detail['op_type']}"])
+                csv_writer.writerow(
+                    ["node_details", node_detail['name'], f"inputs: {', '.join(node_detail['inputs'])}"])
+                csv_writer.writerow(
+                    ["node_details", node_detail['name'], f"outputs: {', '.join(node_detail['outputs'])}"])
+                for attr_name, attr_value in node_detail["attributes"].items():
+                    csv_writer.writerow(["node_details", node_detail['name'], f"{attr_name}: {attr_value}"])
+
 
 def analyze_onnx_model(onnx_file_path, save_to_file=False, output_file=None, show_node_details=False):
     '''
@@ -78,9 +167,14 @@ def analyze_onnx_model(onnx_file_path, save_to_file=False, output_file=None, sho
             "model_size": model_size
         },
         "parameter_data_types": {dtype_name: count for dtype_name, count in dtype_count.items()},
-        "operators": {op_type: {"count": count, "percentage": op_percentage[op_type]} for op_type, count in op_count.items()},
-        "inputs": [{"name": input_tensor.name, "dtype": get_dtype_name(input_tensor.type.tensor_type.elem_type), "shape": [dim.dim_value for dim in input_tensor.type.tensor_type.shape.dim]} for input_tensor in inputs],
-        "outputs": [{"name": output_tensor.name, "dtype": get_dtype_name(output_tensor.type.tensor_type.elem_type), "shape": [dim.dim_value for dim in output_tensor.type.tensor_type.shape.dim]} for output_tensor in outputs],
+        "operators": {op_type: {"count": count, "percentage": op_percentage[op_type]} for op_type, count in
+                      op_count.items()},
+        "inputs": [{"name": input_tensor.name, "dtype": get_dtype_name(input_tensor.type.tensor_type.elem_type),
+                    "shape": [dim.dim_value for dim in input_tensor.type.tensor_type.shape.dim]} for input_tensor in
+                   inputs],
+        "outputs": [{"name": output_tensor.name, "dtype": get_dtype_name(output_tensor.type.tensor_type.elem_type),
+                     "shape": [dim.dim_value for dim in output_tensor.type.tensor_type.shape.dim]} for output_tensor in
+                    outputs],
     }
 
     if show_node_details:
@@ -109,14 +203,15 @@ def analyze_onnx_model(onnx_file_path, save_to_file=False, output_file=None, sho
                 os.makedirs(output_path)
 
         # Save as JSON
-        with open(output_file + ".json", "w") as f:
-            json.dump(output_info, f, indent=2)
-        print(f"\nModel analysis saved to {output_file}.json")
+        save_format_json(output_file, output_info)
 
         # Save as TXT
-        with open(output_file + ".txt", "w") as f:
-            pprint.pprint(output_info, stream=f)
-        print(f"Model analysis saved to {output_file}.txt")
+        save_format_txt(output_info, output_file)
+
+        # Save as CSV
+        save_format_csv(output_info, output_file)
+        print(f"Model analysis saved to {output_file}.csv")
+
 
 if __name__ == '__main__':
     # Usage example
