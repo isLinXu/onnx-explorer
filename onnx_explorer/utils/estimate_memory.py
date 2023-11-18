@@ -7,25 +7,8 @@ from onnx_explorer import logo_str
 
 
 class ModelEstimate:
-    # def __init__(self, onnx_file_path):
-    #     self.print_model_info()
-    #     self.model = onnx.load(onnx_file_path)
-    #     self.num_params = self.get_num_params()
-    #     self.layers = self.get_model_layers()
-    #     self.model_name = onnx_file_path.split('/')[-1].split('.')[0]
     def __init__(self, model_file_path=None, model_type='onnx', manual_num_params=None):
-        # self.print_model_info()
-        # self.model_type = model_type
-        # if model_type == 'onnx':
-        #     self.model = onnx.load(model_file_path)
-        #     self.num_params = self.get_num_params_onnx()
-        # elif model_type == 'pt':
-        #     self.model = torch.load(model_file_path)
-        #     self.num_params = self.get_num_params_pt()
-        # else:
-        #     raise ValueError("Invalid model_type. Supported types are 'onnx' and 'pt'.")
-        # self.layers = self.get_model_layers()
-        # self.model_name = model_file_path.split('/')[-1].split('.')[0]
+        self.print_model_info()
         if manual_num_params is not None:
             self.num_params = manual_num_params
         else:
@@ -149,6 +132,7 @@ class ModelEstimate:
         :return:
         '''
         print("Estimated memory usage for different data types:")
+        data_types = [np.float16, np.float32, np.float64, np.int8, np.int16, np.int32, np.int64]
         for dtype in data_types:
             memory_usage_mb = model.estimate_memory_usage(param_dtype=dtype, unit='MB')
             memory_usage = model.convert_memory(memory_usage_mb, 'MB', 'B')
@@ -164,13 +148,13 @@ if __name__ == '__main__':
     # init params
     input_model_path_onnx = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov5/yolov5x6.onnx"
     input_model_path_pt = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov5/yolov5x6.pt"
-    model_name = input_model_path_onnx.split('/')[-1].split('.')[0]
+    # model_name = input_model_path_onnx.split('/')[-1].split('.')[0]
+    model_name = 'my_model'
     total_memory = 4
     total_memory_unit = 'GB'
-    data_types = [np.float16, np.float32, np.float64, np.int8, np.int16, np.int32, np.int64]
 
-    model = ModelEstimate(input_model_path_onnx, model_type='onnx')
-    model.get_estimated_memory_usage()
+    # model = ModelEstimate(input_model_path_onnx, model_type='onnx')
+    # model.get_estimated_memory_usage()
 
     # model = ModelEstimate(input_model_path_pt, model_type='pt')
     # model.get_estimated_memory_usage()
