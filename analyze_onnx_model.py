@@ -1,8 +1,11 @@
 import onnx
-
-import onnx
 from collections import defaultdict
 from onnx import numpy_helper
+
+
+def get_dtype_name(tensor_dtype):
+    return onnx.TensorProto.DataType.Name(tensor_dtype)
+
 
 def analyze_onnx_model(onnx_file_path):
     # 加载ONNX模型
@@ -50,11 +53,30 @@ def analyze_onnx_model(onnx_file_path):
 
     print("\nInputs:")
     for i, input_tensor in enumerate(inputs):
-        print(f"{i + 1}. {input_tensor.name} (shape: {list(input_tensor.type.tensor_type.shape.dim)})")
+        dtype_name = get_dtype_name(input_tensor.type.tensor_type.elem_type)
+        print(
+            f"{i + 1}. {input_tensor.name} (dtype: {dtype_name}, shape: {list(input_tensor.type.tensor_type.shape.dim)})")
 
     print("\nOutputs:")
     for i, output_tensor in enumerate(outputs):
-        print(f"{i + 1}. {output_tensor.name} (shape: {list(output_tensor.type.tensor_type.shape.dim)})")
+        dtype_name = get_dtype_name(output_tensor.type.tensor_type.elem_type)
+        print(
+            f"{i + 1}. {output_tensor.name} (dtype: {dtype_name}, shape: {list(output_tensor.type.tensor_type.shape.dim)})")
+
+    # 打印节点详细信息
+    print("\nNode Details:")
+    for i, node in enumerate(nodes):
+        print(f"{i + 1}. {node.op_type} ({node.name})")
+        print(f"  Inputs: {len(node.input)}")
+        for input_name in node.input:
+            print(f"    {input_name}")
+        print(f"  Outputs: {len(node.output)}")
+        for output_name in node.output:
+            print(f"    {output_name}")
+        # 打印属性信息
+        print("  Attributes:")
+        for attr in node.attribute:
+            print(f"    {attr.name}: {attr}")
 
 if __name__ == '__main__':
     # 使用示例
