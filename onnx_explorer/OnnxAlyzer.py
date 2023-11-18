@@ -5,6 +5,8 @@ import onnx
 from collections import defaultdict
 from onnx import numpy_helper
 
+from onnx_explorer import logo_str
+
 
 class ONNXModelAnalyzer:
     def __init__(self):
@@ -21,12 +23,6 @@ class ONNXModelAnalyzer:
     @staticmethod
     def save_format_txt(output_info, output_file):
         with open(output_file + ".txt", "w") as f:
-            logo_str = "██████╗ ███╗   ██╗███╗   ██╗██╗  ██╗     ███████╗██╗  ██╗██████╗ ██╗      ██████╗ ██████╗ ███████╗██████╗ \n" + \
-                       "██╔═══██╗████╗  ██║████╗  ██║╚██╗██╔╝     ██╔════╝╚██╗██╔╝██╔══██╗██║     ██╔═══██╗██╔══██╗██╔════╝██╔══██╗ \n" + \
-                       "██║   ██║██╔██╗ ██║██╔██╗ ██║ ╚███╔╝█████╗█████╗   ╚███╔╝ ██████╔╝██║     ██║   ██║██████╔╝█████╗  ██████╔╝ \n" + \
-                       "██║   ██║██║╚██╗██║██║╚██╗██║ ██╔██╗╚════╝██╔══╝   ██╔██╗ ██╔═══╝ ██║     ██║   ██║██╔══██╗██╔══╝  ██╔══██╗\n" + \
-                       "╚██████╔╝██║ ╚████║██║ ╚████║██╔╝ ██╗     ███████╗██╔╝ ██╗██║     ███████╗╚██████╔╝██║  ██║███████╗██║  ██║ \n" + \
-                       "╚═════╝ ╚═╝  ╚═══╝╚═╝  ╚═══╝╚═╝  ╚═╝     ╚══════╝╚═╝  ╚═╝╚═╝     ╚══════╝ ╚═════╝ ╚═╝  ╚═╝╚══════╝╚═╝  ╚═╝"
             f.write(f"{logo_str}\n")
             f.write("================summary================\n")
             for key, value in output_info["summary"].items():
@@ -58,7 +54,7 @@ class ONNXModelAnalyzer:
                     for attr_name, attr_value in node_detail["attributes"].items():
                         f.write(f"  {attr_name}: {attr_value}\n")
                     f.write("\n")
-
+        print(f"Model analysis saved to {output_file}.txt")
     @staticmethod
     def save_format_json(output_file, output_info):
         with open(output_file + ".json", "w") as f:
@@ -98,7 +94,7 @@ class ONNXModelAnalyzer:
                         ["node_details", node_detail['name'], f"outputs: {', '.join(node_detail['outputs'])}"])
                     for attr_name, attr_value in node_detail["attributes"].items():
                         csv_writer.writerow(["node_details", node_detail['name'], f"{attr_name}: {attr_value}"])
-
+        print(f"Model analysis saved to {output_file}.csv")
     @staticmethod
     def analyze_onnx_model(onnx_file_path, save_to_file=False, output_file=None, show_node_details=False):
         '''
@@ -209,7 +205,7 @@ class ONNXModelAnalyzer:
 
             # Save as CSV
             ONNXModelAnalyzer.save_format_csv(output_info, output_file)
-            print(f"Model analysis saved to {output_file}.csv")
+
 
 
 
