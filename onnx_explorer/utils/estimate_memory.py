@@ -2,7 +2,7 @@
 import onnx
 import numpy as np
 
-class ONNXModel:
+class ONNXModelEstimate:
     def __init__(self, onnx_file_path):
         self.model = onnx.load(onnx_file_path)
         self.num_params = self.get_num_params()
@@ -27,14 +27,14 @@ class ONNXModel:
 
     @staticmethod
     def print_memory_usage_bar(memory_usage, total_memory, total_memory_unit='MB', bar_length=100):
-        total_memory_bytes = ONNXModel.convert_memory(total_memory, total_memory_unit, 'B')
+        total_memory_bytes = ONNXModelEstimate.convert_memory(total_memory, total_memory_unit, 'B')
         progress = int(memory_usage / total_memory_bytes * bar_length)
         progress_bar = f"[{'#' * progress}{'-' * (bar_length - progress)}] {progress}%"
         print(f"Memory usage: {progress_bar}")
 
     @staticmethod
     def is_memory_overload(memory_usage, total_memory, total_memory_unit='MB'):
-        total_memory_bytes = ONNXModel.convert_memory(total_memory, total_memory_unit, 'B')
+        total_memory_bytes = ONNXModelEstimate.convert_memory(total_memory, total_memory_unit, 'B')
         return memory_usage > total_memory_bytes
 
     @staticmethod
@@ -45,7 +45,7 @@ class ONNXModel:
 if __name__ == '__main__':
     input_model_path = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov3/yolov3.onnx"
     model_name = input_model_path.split('/')[-1].split('.')[0]
-    onnx_model = ONNXModel(input_model_path)
+    onnx_model = ONNXModelEstimate(input_model_path)
     total_memory = 4
     total_memory_unit = 'GB'
     data_types = [np.float16, np.float32, np.float64, np.int8, np.int16, np.int32, np.int64]
@@ -58,7 +58,7 @@ if __name__ == '__main__':
         memory_usage = onnx_model.convert_memory(memory_usage_mb, 'MB', 'B')
         print(f"【{model_name}】-> {dtype}: {memory_usage_mb:.2f} MB")
         print('-' * (120))
-        ONNXModel.print_memory_usage_bar(memory_usage, total_memory, total_memory_unit)
+        ONNXModelEstimate.print_memory_usage_bar(memory_usage, total_memory, total_memory_unit)
 
-        if ONNXModel.is_memory_overload(memory_usage, total_memory, total_memory_unit):
+        if ONNXModelEstimate.is_memory_overload(memory_usage, total_memory, total_memory_unit):
             print("Warning: Memory overload!")
