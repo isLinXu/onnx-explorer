@@ -1,17 +1,64 @@
 
 import onnx
 import numpy as np
+import torch
 
 from onnx_explorer import logo_str
 
 
-class ONNXModelEstimate:
-    def __init__(self, onnx_file_path):
-        self.print_model_info()
-        self.model = onnx.load(onnx_file_path)
-        self.num_params = self.get_num_params()
-        self.layers = self.get_model_layers()
-        self.model_name = onnx_file_path.split('/')[-1].split('.')[0]
+class ModelEstimate:
+    # def __init__(self, onnx_file_path):
+    #     self.print_model_info()
+    #     self.model = onnx.load(onnx_file_path)
+    #     self.num_params = self.get_num_params()
+    #     self.layers = self.get_model_layers()
+    #     self.model_name = onnx_file_path.split('/')[-1].split('.')[0]
+    def __init__(self, model_file_path=None, model_type='onnx', manual_num_params=None):
+        # self.print_model_info()
+        # self.model_type = model_type
+        # if model_type == 'onnx':
+        #     self.model = onnx.load(model_file_path)
+        #     self.num_params = self.get_num_params_onnx()
+        # elif model_type == 'pt':
+        #     self.model = torch.load(model_file_path)
+        #     self.num_params = self.get_num_params_pt()
+        # else:
+        #     raise ValueError("Invalid model_type. Supported types are 'onnx' and 'pt'.")
+        # self.layers = self.get_model_layers()
+        # self.model_name = model_file_path.split('/')[-1].split('.')[0]
+        if manual_num_params is not None:
+            self.num_params = manual_num_params
+        else:
+            self.model_type = model_type
+            if model_type == 'onnx':
+                self.model = onnx.load(model_file_path)
+                self.num_params = self.get_num_params_onnx()
+                self.layers = self.get_model_layers()
+            elif model_type == 'pt':
+                self.model = torch.load(model_file_path)
+                self.num_params = self.get_num_params_pt()
+            else:
+                raise ValueError("Invalid model_type. Supported types are 'onnx' and 'pt'.")
+        # self.layers = self.get_model_layers()
+        self.model_name = model_file_path.split('/')[-1].split('.')[0] if model_file_path else "Manual"
+
+    def get_num_params_onnx(self):
+        '''
+        Get the number of parameters in the ONNX model
+        :return:
+        '''
+        num_params = sum([np.prod(param.dims) for param in self.model.graph.initializer])
+        print(f"Number of parameters: {num_params}")
+        return num_params
+
+    def get_num_params_pt(self):
+        '''
+        Get the number of parameters in the PyTorch model
+        :return:
+        '''
+        num_params = sum(p.numel() for p in self.model.parameters())
+        print(f"Number of parameters: {num_params}")
+        return num_params
 
     def print_model_info(self):
         print(f"{logo_str}\n")
@@ -66,7 +113,7 @@ class ONNXModelEstimate:
         :param bar_length:
         :return:
         '''
-        total_memory_bytes = ONNXModelEstimate.convert_memory(total_memory, total_memory_unit, 'B')
+        total_memory_bytes = ModelEstimate.convert_memory(total_memory, total_memory_unit, 'B')
         progress = int(memory_usage / total_memory_bytes * bar_length)
         progress_bar = f"[{'#' * progress}{'-' * (bar_length - progress)}] {progress}%"
         print(f"Memory usage: {progress_bar}")
@@ -80,7 +127,7 @@ class ONNXModelEstimate:
         :param total_memory_unit:
         :return:
         '''
-        total_memory_bytes = ONNXModelEstimate.convert_memory(total_memory, total_memory_unit, 'B')
+        total_memory_bytes = ModelEstimate.convert_memory(total_memory, total_memory_unit, 'B')
         return memory_usage > total_memory_bytes
 
     @staticmethod
@@ -103,23 +150,32 @@ class ONNXModelEstimate:
         '''
         print("Estimated memory usage for different data types:")
         for dtype in data_types:
-            memory_usage_mb = onnx_model.estimate_memory_usage(param_dtype=dtype, unit='MB')
-            memory_usage = onnx_model.convert_memory(memory_usage_mb, 'MB', 'B')
+            memory_usage_mb = model.estimate_memory_usage(param_dtype=dtype, unit='MB')
+            memory_usage = model.convert_memory(memory_usage_mb, 'MB', 'B')
             print(f"【{model_name}】-> {dtype.__name__}: -> {memory_usage_mb:.2f} MB in {total_memory}{total_memory_unit}")
             print('-' * (120))
-            ONNXModelEstimate.print_memory_usage_bar(memory_usage, total_memory, total_memory_unit)
+            ModelEstimate.print_memory_usage_bar(memory_usage, total_memory, total_memory_unit)
 
-            if ONNXModelEstimate.is_memory_overload(memory_usage, total_memory, total_memory_unit):
+            if ModelEstimate.is_memory_overload(memory_usage, total_memory, total_memory_unit):
                 print("Warning: Memory overload!")
 
 
 if __name__ == '__main__':
     # init params
-    input_model_path = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov3/yolov3.onnx"
-    model_name = input_model_path.split('/')[-1].split('.')[0]
+    input_model_path_onnx = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov5/yolov5x6.onnx"
+    input_model_path_pt = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov5/yolov5x6.pt"
+    model_name = input_model_path_onnx.split('/')[-1].split('.')[0]
     total_memory = 4
     total_memory_unit = 'GB'
     data_types = [np.float16, np.float32, np.float64, np.int8, np.int16, np.int32, np.int64]
 
-    onnx_model = ONNXModelEstimate(input_model_path)
-    onnx_model.get_estimated_memory_usage()
+    model = ModelEstimate(input_model_path_onnx, model_type='onnx')
+    model.get_estimated_memory_usage()
+
+    # model = ModelEstimate(input_model_path_pt, model_type='pt')
+    # model.get_estimated_memory_usage()
+
+    # Example with manual input of parameters
+    manual_params = 500000000  # 50 million parameters
+    model = ModelEstimate(manual_num_params=manual_params)
+    model.get_estimated_memory_usage()
