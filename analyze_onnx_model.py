@@ -1,5 +1,9 @@
 import onnx
 
+import onnx
+from collections import defaultdict
+from onnx import numpy_helper
+
 def analyze_onnx_model(onnx_file_path):
     # 加载ONNX模型
     model = onnx.load(onnx_file_path)
@@ -14,6 +18,9 @@ def analyze_onnx_model(onnx_file_path):
     inputs = graph.input
     outputs = graph.output
 
+    # 获取模型参数
+    initializer = graph.initializer
+
     # 统计节点数量
     node_count = len(nodes)
 
@@ -21,16 +28,25 @@ def analyze_onnx_model(onnx_file_path):
     input_count = len(inputs)
     output_count = len(outputs)
 
+    # 计算参数量
+    num_params = sum(numpy_helper.to_array(tensor).size for tensor in initializer)
+
+    # 统计算子数量
+    op_count = defaultdict(int)
+    for node in nodes:
+        op_count[node.op_type] += 1
+
     # 打印摘要信息
     print(f"Model: {onnx_file_path}")
     print(f"Node count: {node_count}")
     print(f"Input count: {input_count}")
     print(f"Output count: {output_count}")
-    print("\nNodes:")
+    print(f"Number of parameters: {num_params}")
+    print("\nOperators:")
 
-    # 打印节点详细信息
-    for i, node in enumerate(nodes):
-        print(f"{i + 1}. {node.op_type} ({node.name})")
+    # 打印算子信息
+    for i, (op_type, count) in enumerate(op_count.items()):
+        print(f"{i + 1}. {op_type} (count: {count})")
 
     print("\nInputs:")
     for i, input_tensor in enumerate(inputs):
@@ -39,7 +55,6 @@ def analyze_onnx_model(onnx_file_path):
     print("\nOutputs:")
     for i, output_tensor in enumerate(outputs):
         print(f"{i + 1}. {output_tensor.name} (shape: {list(output_tensor.type.tensor_type.shape.dim)})")
-
 
 if __name__ == '__main__':
     # 使用示例
