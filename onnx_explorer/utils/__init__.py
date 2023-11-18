@@ -1,5 +1,8 @@
 import os
 
+def byte_to_mb(byte):
+    return byte / 1024 / 1024
+
 def bytes_to_readable_size(size_in_bytes, unit='MB'):
     if unit == 'MB':
         return size_in_bytes / (1024 * 1024)

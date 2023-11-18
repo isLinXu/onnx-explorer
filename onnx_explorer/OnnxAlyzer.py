@@ -6,6 +6,7 @@ from collections import defaultdict
 from onnx import numpy_helper
 
 from onnx_explorer import logo_str
+from onnx_explorer.utils import get_file_size, byte_to_mb
 
 
 class ONNXModelAnalyzer:
@@ -178,7 +179,7 @@ class ONNXModelAnalyzer:
                 "input_count": input_count,
                 "output_count": output_count,
                 "num_params": num_params,
-                "model_size": model_size
+                "model_size": byte_to_mb(model_size)
             },
             "parameter_data_types": {dtype_name: count for dtype_name, count in dtype_count.items()},
             "operators": {op_type: {"count": count, "percentage": op_percentage[op_type]} for op_type, count in
