@@ -90,7 +90,8 @@ class ModelEstimate:
         '''
         bytes_per_param = np.dtype(param_dtype).itemsize
         memory_usage_bytes = self.num_params * bytes_per_param
-
+        if type(memory_usage_bytes) == str:
+            memory_usage_bytes = float(memory_usage_bytes)
         if unit == 'B':
             return memory_usage_bytes
         elif unit == 'KB':
@@ -171,16 +172,16 @@ def main():
     total_memory = 4
     total_memory_unit = 'GB'
 
-    model = ModelEstimate(input_model_path_onnx, model_type='onnx', total_memory=total_memory, total_memory_unit=total_memory_unit)
-    model.get_estimated_memory_usage()
+    # model = ModelEstimate(input_model_path_onnx, model_type='onnx', total_memory=total_memory, total_memory_unit=total_memory_unit)
+    # model.get_estimated_memory_usage()
 
     # model = ModelEstimate(input_model_path_pt, model_type='pt')
     # model.get_estimated_memory_usage()
 
     # Example with manual input of parameters
-    # manual_params = 500000000  # 50 million parameters
-    # model = ModelEstimate(manual_num_params=manual_params)
-    # model.get_estimated_memory_usage()
+    manual_params = 500000000  # 50 million parameters
+    model = ModelEstimate(manual_num_params=manual_params)
+    model.get_estimated_memory_usage()
 
 
 if __name__ == '__main__':
