@@ -1,0 +1,24 @@
+section,key,value
+summary,model,ckpts/yolov5/yolov5x6.onnx
+summary,node_count,617
+summary,input_count,1
+summary,output_count,1
+summary,num_params,140730248
+summary,model_size,536.9004783630371
+parameter_data_types,FLOAT,140730232
+parameter_data_types,INT64,16
+operators,Conv,"count=163, percentage=26.418152350081037"
+operators,Sigmoid,"count=163, percentage=26.418152350081037"
+operators,Mul,"count=159, percentage=25.76985413290113"
+operators,Add,"count=32, percentage=5.186385737439222"
+operators,Concat,"count=27, percentage=4.376012965964344"
+operators,MaxPool,"count=3, percentage=0.48622366288492713"
+operators,Constant,"count=15, percentage=2.4311183144246353"
+operators,Resize,"count=3, percentage=0.48622366288492713"
+operators,Shape,"count=12, percentage=1.9448946515397085"
+operators,Gather,"count=12, percentage=1.9448946515397085"
+operators,Unsqueeze,"count=16, percentage=2.593192868719611"
+operators,Reshape,"count=8, percentage=1.2965964343598055"
+operators,Transpose,"count=4, percentage=0.6482982171799028"
+inputs,images,"dtype=FLOAT, shape=[1, 3, 1280, 1280]"
+outputs,output,"dtype=FLOAT, shape=[1, 102000, 85]"
