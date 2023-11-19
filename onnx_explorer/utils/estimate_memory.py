@@ -7,13 +7,24 @@ from onnx_explorer import logo_str
 
 
 class ModelEstimate:
-    def __init__(self, model_file_path=None, model_type='onnx', manual_num_params=None):
+    def __init__(self, model_file_path=None, model_type='onnx', manual_num_params=None, total_memory=4, total_memory_unit='GB'):
         '''
         Initialize the ModelEstimate class
         :param model_file_path:
         :param model_type:
         :param manual_num_params:
         '''
+        if manual_num_params is None and model_file_path is None:
+            raise ValueError("Either model_file_path or manual_num_params must be provided.")
+        elif manual_num_params is not None and model_file_path is not None:
+            raise ValueError("Only one of model_file_path and manual_num_params must be provided.")
+        elif manual_num_params is not None:
+            print("Warning: Using manual_num_params. The estimated memory usage may not be accurate.")
+            self.model_name = "Manual"
+        elif model_file_path is not None:
+            self.model_name = model_file_path.split('/')[-1].split('.')[0] if model_file_path else "Manual"
+        self.total_memory = total_memory
+        self.total_memory_unit = total_memory_unit
         self.print_model_info()
         if manual_num_params is not None:
             self.num_params = manual_num_params
@@ -28,7 +39,6 @@ class ModelEstimate:
                 self.num_params = self.get_num_params_pt()
             else:
                 raise ValueError("Invalid model_type. Supported types are 'onnx' and 'pt'.")
-        self.model_name = model_file_path.split('/')[-1].split('.')[0] if model_file_path else "Manual"
 
     def get_num_params_onnx(self):
         '''
@@ -50,7 +60,7 @@ class ModelEstimate:
 
     def print_model_info(self):
         print(f"{logo_str}\n")
-        print(f"【{model_name}】")
+        print(f"【{self.model_name}】")
 
     def get_model_layers(self):
         '''
@@ -130,8 +140,8 @@ class ModelEstimate:
         conversion_factors = {'B': 1, 'KB': 1024, 'MB': 1024**2, 'GB': 1024**3}
         return value * conversion_factors[input_unit] / conversion_factors[output_unit]
 
-    @staticmethod
-    def get_estimated_memory_usage():
+
+    def get_estimated_memory_usage(self):
         '''
         Get the estimated memory usage for different data types
         :return:
@@ -139,17 +149,17 @@ class ModelEstimate:
         print("Estimated memory usage for different data types:")
         data_types = [np.float16, np.float32, np.float64, np.int8, np.int16, np.int32, np.int64]
         for dtype in data_types:
-            memory_usage_mb = model.estimate_memory_usage(param_dtype=dtype, unit='MB')
-            memory_usage = model.convert_memory(memory_usage_mb, 'MB', 'B')
-            print(f"【{model_name}】-> {dtype.__name__}: -> {memory_usage_mb:.2f} MB in {total_memory}{total_memory_unit}")
+            memory_usage_mb = self.estimate_memory_usage(param_dtype=dtype, unit='MB')
+            memory_usage = self.convert_memory(memory_usage_mb, 'MB', 'B')
+            print(f"【{self.model_name}】-> {dtype.__name__}: -> {memory_usage_mb:.2f} MB in {self.total_memory}{self.total_memory_unit}")
             print('-' * (120))
-            ModelEstimate.print_memory_usage_bar(memory_usage, total_memory, total_memory_unit)
+            ModelEstimate.print_memory_usage_bar(memory_usage, self.total_memory, self.total_memory_unit)
 
-            if ModelEstimate.is_memory_overload(memory_usage, total_memory, total_memory_unit):
+            if ModelEstimate.is_memory_overload(memory_usage, self.total_memory, self.total_memory_unit):
                 print("Warning: Memory overload!")
 
 
-if __name__ == '__main__':
+def main():
     # init params
     input_model_path_onnx = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov5/yolov5x6.onnx"
     input_model_path_pt = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov5/yolov5x6.pt"
@@ -158,7 +168,7 @@ if __name__ == '__main__':
     total_memory = 4
     total_memory_unit = 'GB'
 
-    model = ModelEstimate(input_model_path_onnx, model_type='onnx')
+    model = ModelEstimate(input_model_path_onnx, model_type='onnx', total_memory=total_memory, total_memory_unit=total_memory_unit)
     model.get_estimated_memory_usage()
 
     # model = ModelEstimate(input_model_path_pt, model_type='pt')
@@ -168,3 +178,7 @@ if __name__ == '__main__':
     # manual_params = 500000000  # 50 million parameters
     # model = ModelEstimate(manual_num_params=manual_params)
     # model.get_estimated_memory_usage()
+
+
+if __name__ == '__main__':
+    main()
