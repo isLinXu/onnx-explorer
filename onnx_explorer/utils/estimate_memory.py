@@ -25,6 +25,7 @@ class ModelEstimate:
             self.model_name = model_file_path.split('/')[-1].split('.')[0] if model_file_path else "Manual"
         self.total_memory = total_memory
         self.total_memory_unit = total_memory_unit
+        self.calc_memory_unit = 'MB'
         self.print_model_info()
         if manual_num_params is not None:
             self.num_params = manual_num_params
@@ -151,9 +152,9 @@ class ModelEstimate:
         print("Estimated memory usage for different data types:")
         data_types = [np.float16, np.float32, np.float64, np.int8, np.int16, np.int32, np.int64]
         for dtype in data_types:
-            memory_usage_mb = self.estimate_memory_usage(param_dtype=dtype, unit=self.total_memory_unit)
-            memory_usage = self.convert_memory(memory_usage_mb, self.total_memory_unit, 'B')
-            print(f"【{self.model_name}】-> {dtype.__name__}: -> {memory_usage_mb:.2f} {self.total_memory_unit} in {self.total_memory}{self.total_memory_unit}")
+            memory_usage_mb = self.estimate_memory_usage(param_dtype=dtype, unit=self.calc_memory_unit)
+            memory_usage = self.convert_memory(memory_usage_mb, self.calc_memory_unit, 'B')
+            print(f"【{self.model_name}】-> {dtype.__name__}: -> {memory_usage_mb:.2f} {self.calc_memory_unit} in {self.total_memory}{self.total_memory_unit}")
             print('-' * (120))
             ModelEstimate.print_memory_usage_bar(memory_usage, self.total_memory, self.total_memory_unit)
 
