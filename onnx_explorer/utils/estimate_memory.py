@@ -8,6 +8,12 @@ from onnx_explorer import logo_str
 
 class ModelEstimate:
     def __init__(self, model_file_path=None, model_type='onnx', manual_num_params=None):
+        '''
+        Initialize the ModelEstimate class
+        :param model_file_path:
+        :param model_type:
+        :param manual_num_params:
+        '''
         self.print_model_info()
         if manual_num_params is not None:
             self.num_params = manual_num_params
@@ -22,7 +28,6 @@ class ModelEstimate:
                 self.num_params = self.get_num_params_pt()
             else:
                 raise ValueError("Invalid model_type. Supported types are 'onnx' and 'pt'.")
-        # self.layers = self.get_model_layers()
         self.model_name = model_file_path.split('/')[-1].split('.')[0] if model_file_path else "Manual"
 
     def get_num_params_onnx(self):
@@ -148,18 +153,18 @@ if __name__ == '__main__':
     # init params
     input_model_path_onnx = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov5/yolov5x6.onnx"
     input_model_path_pt = "/Users/gatilin/CLionProjects/opencv-inference/weights/yolov5/yolov5x6.pt"
-    # model_name = input_model_path_onnx.split('/')[-1].split('.')[0]
-    model_name = 'my_model'
+    model_name = input_model_path_onnx.split('/')[-1].split('.')[0]
+    # model_name = 'my_model'
     total_memory = 4
     total_memory_unit = 'GB'
 
-    # model = ModelEstimate(input_model_path_onnx, model_type='onnx')
-    # model.get_estimated_memory_usage()
+    model = ModelEstimate(input_model_path_onnx, model_type='onnx')
+    model.get_estimated_memory_usage()
 
     # model = ModelEstimate(input_model_path_pt, model_type='pt')
     # model.get_estimated_memory_usage()
 
     # Example with manual input of parameters
-    manual_params = 500000000  # 50 million parameters
-    model = ModelEstimate(manual_num_params=manual_params)
-    model.get_estimated_memory_usage()
+    # manual_params = 500000000  # 50 million parameters
+    # model = ModelEstimate(manual_num_params=manual_params)
+    # model.get_estimated_memory_usage()
