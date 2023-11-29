@@ -14,7 +14,7 @@ class CustomModel(nn.Module):
     def forward(self, x):
         outputs = {}
         for idx, layer in enumerate(self.layers):
-            if isinstance(layer, (Concat, Add)):
+            if isinstance(layer, MultiInputLayer):
                 inputs = [outputs[input_name] for input_name in layer.inputs]
                 x = layer(*inputs)
             else:
@@ -24,21 +24,22 @@ class CustomModel(nn.Module):
 
         return x
 
-
-class Concat(nn.Module):
-    def __init__(self, inputs, dim):
-        super(Concat, self).__init__()
+class MultiInputLayer(nn.Module):
+    def __init__(self, inputs):
+        super(MultiInputLayer, self).__init__()
         self.inputs = inputs
+
+class Concat(MultiInputLayer):
+    def __init__(self, inputs, dim):
+        super(Concat, self).__init__(inputs)
         self.dim = dim
 
     def forward(self, *inputs):
         return torch.cat(inputs, dim=self.dim)
 
-
-class Add(nn.Module):
+class Add(MultiInputLayer):
     def __init__(self, inputs):
-        super(Add, self).__init__()
-        self.inputs = inputs
+        super(Add, self).__init__(inputs)
 
     def forward(self, *inputs):
         return sum(inputs)
@@ -93,7 +94,10 @@ def create_pytorch_layer(layer_type, layer_params):
         return nn.Hardtanh(min_val=layer_params.get("min_val", -1.0), max_val=layer_params.get("max_val", 1.0))
     # 添加更多的层类型
     else:
-        if layer_type == "Concat":
+        if layer_type.startswith("torch.") or layer_type.startswith("torch.nn."):
+            func = eval(layer_type)
+            return func(**layer_params)
+        elif layer_type == "Concat":
             return Concat(layer_params["inputs"], layer_params["dim"])
         elif layer_type == "Add":
             return Add(layer_params["inputs"])
