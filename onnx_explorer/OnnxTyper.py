@@ -23,7 +23,6 @@ class OnnxTypeModifier:
 
             if input_name in update_list:
                 input.attribute[0].t.data_type = new_data_type
-
         return model
 
 if __name__ == "__main__":
