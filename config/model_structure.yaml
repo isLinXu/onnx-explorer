@@ -1,0 +1,11 @@
+layers:
+  - type: Linear
+    in_features: 3
+    out_features: 4
+  - type: ReLU
+  - type: Linear
+    in_features: 4
+    out_features: 2
+  - type: Concat
+    inputs: ["layer0", "layer2"]
+    dim: 1
