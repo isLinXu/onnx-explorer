@@ -4,8 +4,7 @@
 
 # Design
 
-
-![onnx-explorer-design](https://github.com/isLinXu/issues/assets/59380685/ad11988b-3ca3-4014-83a9-66cf952beb07)
+![onnx-explorer-design](https://github.com/isLinXu/issues/assets/59380685/0bf127ce-7a13-4e24-be72-19a11243da79)
 
 ## Features
 - [x]  support export onnx model infos and summary[txt,json,csv]
@@ -19,6 +18,11 @@
 | <img width="1005" alt="onnx_explorer_3" src="https://github.com/isLinXu/issues/assets/59380685/18c3ea72-2c81-4ff0-b8f1-c993c9020967"> | <img width="760" alt="onnx_explorer_4" src="https://github.com/isLinXu/issues/assets/59380685/e2cb1947-aff6-4552-8150-b3a7a8a2e59b"> | <img width="1034" alt="image" src="https://github.com/isLinXu/issues/assets/59380685/e2613ae9-6890-4b58-ac05-64222bbfefc2"> |
 |:-------------------------------------------------------------------------------------------------------------------------------------:|:------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------:|
 |  [Yolov5x6.txt](example/data/yolov5/yolov5x6.txt)                                                            | [Yolov5x6.json](example/data/yolov5/yolov5x6.json)                                                           | [Yolov5x6.csv](example/data/yolov5/yolov5x6.csv)                                                       |
+
+## onnx model summary
+
+
+
 
 ##  estimate model memory
 
