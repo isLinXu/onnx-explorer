@@ -2,10 +2,12 @@ import argparse
 import csv
 import os
 import json
+
+import numpy
 import onnx
 from collections import defaultdict
 from onnx import numpy_helper
-
+from onnx import shape_inference
 from onnx_explorer import logo_str
 from onnx_explorer.utils import get_file_size, byte_to_mb
 
@@ -24,7 +26,7 @@ class ONNXModelAnalyzer:
         return onnx.TensorProto.DataType.Name(tensor_dtype)
 
     @staticmethod
-    def save_format_txt(output_info, output_file):
+    def save_format_txt(output_info, output_file, show_node_details=False):
         '''
         :param output_info:
         :param output_file:
@@ -39,6 +41,48 @@ class ONNXModelAnalyzer:
         '''
         with open(output_file + ".txt", "w") as f:
             f.write(f"{logo_str}\n")
+            # Write model information in the given format
+            if show_node_details:
+                # Calculate input size (MB)
+                input_size = sum(numpy.prod(input_info['shape']) for input_info in output_info['inputs']) * 4 / (
+                        1024 * 1024)
+
+                forward_backward_pass_size = sum(
+                    numpy.prod(node_detail['output_shape']) for node_detail in output_info['node_details']) * 4 / (
+                                                     1024 * 1024)
+
+                # Calculate estimated total size (MB)
+                estimated_total_size = input_size + forward_backward_pass_size + output_info['summary']['model_size']
+
+                # Write model information in the given format
+                f.write(
+                    "=========================================================================================================\n")
+                f.write("Layer (type:depth-idx)                                  Output Shape              Param #\n")
+                f.write(
+                    "=========================================================================================================\n")
+
+                if "node_details" in output_info:
+                    for node_detail in output_info.get("node_details", []):
+                        output_shape = str(node_detail['output_shape'])
+                        param_num = node_detail['param_count']
+                        f.write(f"{node_detail['op_type']: <40} {output_shape: <30} {param_num: <10}\n")
+                f.write(
+                    "=========================================================================================================\n")
+                f.write(f"Total params: {output_info['summary']['num_params']}\n")
+                f.write(f"Trainable params: {output_info['summary']['num_params']}\n")
+                f.write("Non-trainable params: 0\n")
+                f.write("Total mult-adds (M): TODO\n")
+                f.write(
+                    "=========================================================================================================\n")
+                f.write(f"Input size (MB): {input_size:.2f}\n")
+                f.write(f"Forward/backward pass size (MB): {forward_backward_pass_size:.2f}\n")
+                f.write(f"Params size (MB): {output_info['summary']['model_size']}\n")
+                f.write(f"Estimated Total Size (MB): {estimated_total_size:.2f}\n")
+                f.write(
+                    "=========================================================================================================\n\n")
+
+            ############################################################################################################################
+            # Write model information in the given format
             f.write("================================【summary】================================\n")
             for key, value in output_info["summary"].items():
                 f.write(f"| {key}: {value}\n")
@@ -64,7 +108,8 @@ class ONNXModelAnalyzer:
                 f.write(f"name={output_info['name']}, dtype={output_info['dtype']}, shape={output_info['shape']}\n")
 
             if "node_details" in output_info:
-                f.write("=========================================【node_details】==========================================\n")
+                f.write(
+                    "=========================================【node_details】==========================================\n")
                 for node_detail in output_info["node_details"]:
                     f.write(f"op_type={node_detail['op_type']}, name={node_detail['name']}\n")
                     f.write(f"inputs: {', '.join(node_detail['inputs'])}\n")
@@ -73,6 +118,7 @@ class ONNXModelAnalyzer:
                     for attr_name, attr_value in node_detail["attributes"].items():
                         f.write(f"  {attr_name}: {attr_value}\n")
                     f.write("\n")
+
         print(f"Model analysis saved to {output_file}.txt")
 
     @staticmethod
@@ -117,15 +163,14 @@ class ONNXModelAnalyzer:
         print(f"Model analysis saved to {output_file}.csv")
 
     @staticmethod
+    def print_node_structure(f, node_name, node_details, node_parent, depth=0):
+        node_detail = node_details[node_name]
+        f.write("─" * depth + f"{node_detail['op_type']} ({node_detail['name']})\n")
+        for child_node_name in [node['name'] for node in node_details if node_parent[node['name']] == node_name]:
+            f.print_node_structure(f, child_node_name, node_details, node_parent, depth + 1)
+
+    @staticmethod
     def analyze_onnx_model(onnx_file_path, save_to_file=False, output_file=None, show_node_details=False):
-        '''
-        analyze onnx model
-        :param onnx_file_path:
-        :param save_to_file:
-        :param output_file:
-        :param show_node_details:
-        :return:
-        '''
         if onnx_file_path is not None:
             if os.path.exists(onnx_file_path):
                 # Load ONNX model
@@ -133,6 +178,10 @@ class ONNXModelAnalyzer:
 
                 # Validate model
                 onnx.checker.check_model(model)
+
+                # Infer shapes
+                inferred_model = shape_inference.infer_shapes(model)
+                value_info = {vi.name: vi for vi in inferred_model.graph.value_info}
 
                 # Get graph information
                 graph = model.graph
@@ -146,6 +195,29 @@ class ONNXModelAnalyzer:
 
                 # Get model parameters
                 initializer = graph.initializer
+
+                # Calculate parameters for each node
+                initializer_dict = {tensor.name: numpy_helper.to_array(tensor) for tensor in initializer}
+                node_params = {}
+                for node in nodes:
+                    node_param_count = 0
+                    for input_name in node.input:
+                        if input_name in initializer_dict:
+                            node_param_count += initializer_dict[input_name].size
+                    node_params[node.name] = node_param_count
+
+                # Create a dictionary to find nodes by their output tensor names
+                nodes_by_output = {output_name: node for node in nodes for output_name in node.output}
+
+                # Calculate parent for each node
+                node_parent = {}
+                for node in nodes:
+                    for input_name in node.input:
+                        if input_name in node_params:
+                            node_parent[node.name] = nodes_by_output[input_name].name
+                            break
+                        else:
+                            node_parent[node.name] = None
 
                 # Count the number of nodes
                 node_count = len(nodes)
@@ -174,6 +246,8 @@ class ONNXModelAnalyzer:
                     dtype_name = ONNXModelAnalyzer.get_dtype_name(tensor.data_type)
                     dtype_count[dtype_name] += numpy_helper.to_array(tensor).size
 
+                nodes_by_name = {node.name: node for node in nodes}
+
                 # Prepare output information
                 output_info = {
                     "summary": {
@@ -186,28 +260,26 @@ class ONNXModelAnalyzer:
                     },
                     "parameter_data_types": {dtype_name: count for dtype_name, count in dtype_count.items()},
                     "operators": {op_type: {"count": count, "percentage": op_percentage[op_type]} for op_type, count in
-                                  op_count.items()},
-                    "operators_list": list(op_count.keys()),
+                                  op_count.items()}, "operators_list": list(op_count.keys()),
                     "inputs": [{"name": input_tensor.name,
                                 "dtype": ONNXModelAnalyzer.get_dtype_name(input_tensor.type.tensor_type.elem_type),
-                                "shape": [dim.dim_value for dim in input_tensor.type.tensor_type.shape.dim]} for input_tensor in
-                               inputs],
-                    "outputs": [{"name": output_tensor.name,
-                                 "dtype": ONNXModelAnalyzer.get_dtype_name(output_tensor.type.tensor_type.elem_type),
-                                 "shape": [dim.dim_value for dim in output_tensor.type.tensor_type.shape.dim]} for output_tensor
-                                in outputs], }
+                                "shape": [dim.dim_value for dim in input_tensor.type.tensor_type.shape.dim]} for input_tensor in inputs],
+                                "outputs": [{"name": output_tensor.name,
+                                             "dtype": ONNXModelAnalyzer.get_dtype_name(output_tensor.type.tensor_type.elem_type),
+                                             "shape": [dim.dim_value for dim in output_tensor.type.tensor_type.shape.dim]} for output_tensor in outputs],
+                                "node_details": [
+                                {
+                                    "op_type": node.op_type,
+                                    "name": node.name,
+                                    "inputs": [input_name for input_name in node.input],
+                                    "outputs": [output_name for output_name in node.output],
+                                    "attributes": {attr.name: str(attr) for attr in node.attribute},
+                                    "output_shape": [dim.dim_value for dim in value_info[node.output[0]].type.tensor_type.shape.dim] if node.output[0] in value_info else [],
+                                    "param_count": node_params[node.name]
+                                } for node in nodes
+                            ]}
 
                 if show_node_details:
-                    output_info["node_details"] = [
-                        {
-                            "op_type": node.op_type,
-                            "name": node.name,
-                            "inputs": [input_name for input_name in node.input],
-                            "outputs": [output_name for output_name in node.output],
-                            "attributes": {attr.name: str(attr) for attr in node.attribute}
-                        } for node in nodes
-                    ]
-
                     # Print output information
                     import pprint
                     pprint.pprint(output_info)
@@ -226,14 +298,15 @@ class ONNXModelAnalyzer:
                     ONNXModelAnalyzer.save_format_json(output_file, output_info)
 
                     # Save as TXT
-                    ONNXModelAnalyzer.save_format_txt(output_info, output_file)
+                    ONNXModelAnalyzer.save_format_txt(output_info, output_file, show_node_details)
 
                     # Save as CSV
                     ONNXModelAnalyzer.save_format_csv(output_info, output_file)
+                else:
+                    print("onnx_file_path not found")
             else:
-                print("onnx_file_path not found")
-        else:
-            print("onnx_file_path is None")
+                print("onnx_file_path is None")
+
 
 def main():
     print(f"{logo_str}\n")
@@ -241,6 +314,7 @@ def main():
     output_file = "../weights/yolov5/yolov5x6"
     ONNXModelAnalyzer.analyze_onnx_model(model_path, save_to_file=True, output_file=output_file,
                                          show_node_details=False)
+
 
 if __name__ == '__main__':
     main()
