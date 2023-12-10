@@ -3,12 +3,13 @@ import os
 import json
 
 import numpy
+import numpy as np
 import onnx
 from collections import defaultdict
 from onnx import numpy_helper
 from onnx import shape_inference
 from onnx_explorer import logo_str
-from onnx_explorer.utils import get_file_size, byte_to_mb
+from onnx_explorer.utils import get_file_size, byte_to_mb, get_file_size_mb, get_model_size_mb
 
 
 class ONNXModelAnalyzer:
@@ -170,7 +171,9 @@ class ONNXModelAnalyzer:
                         csv_writer.writerow(["node_details", node_detail['name'], f"{attr_name}: {attr_value}"])
         print(f"Model analysis saved to {output_file}.csv")
 
-
+    @staticmethod
+    def get_file_size(file_path):
+        return os.path.getsize(file_path)
     @staticmethod
     def get_node_depth(node_name, node_parents, nodes_by_output, visited=None):
         '''
@@ -284,9 +287,6 @@ class ONNXModelAnalyzer:
                 # Calculate operator percentage
                 op_percentage = {op_type: count / node_count * 100 for op_type, count in op_count.items()}
 
-                # Calculate model size
-                model_size = os.path.getsize(onnx_file_path)
-
                 # Count the number of parameters for each data type
                 dtype_count = defaultdict(int)
                 for tensor in initializer:
@@ -295,6 +295,10 @@ class ONNXModelAnalyzer:
 
                 nodes_by_name = {node.name: node for node in nodes}
 
+                # Calculate model size
+                # model_size = os.path.getsize(onnx_file_path)
+                # model_size = get_file_size_mb(onnx_file_path)
+                model_size = get_model_size_mb(onnx_file_path)
                 # Prepare output information
                 output_info = {
                     "summary": {
@@ -303,9 +307,9 @@ class ONNXModelAnalyzer:
                         "input_count": input_count,
                         "output_count": output_count,
                         "num_params": num_params,
-                        "model_size": byte_to_mb(model_size)
+                        "model_size": model_size,
+                        # "model_size": byte_to_mb(model_size)
                     },
-                    # "node_parents":node_parents,
                     "parameter_data_types": {dtype_name: count for dtype_name, count in dtype_count.items()},
                     "operators": {op_type: {"count": count, "percentage": op_percentage[op_type]} for op_type, count in
                                   op_count.items()}, "operators_list": list(op_count.keys()),
@@ -323,10 +327,8 @@ class ONNXModelAnalyzer:
                                     "outputs": [output_name for output_name in node.output],
                                     "attributes": {attr.name: str(attr) for attr in node.attribute},
                                     "output_shape": [dim.dim_value for dim in value_info[node.output[0]].type.tensor_type.shape.dim] if node.output[0] in value_info else [],
-                                    # "param_count": node_params[node.name]
                                     "param_count": node_params[node.name],
                                     "depth": ONNXModelAnalyzer.get_node_depth(node.name, node_parents, nodes_by_output)
-                                    # "depth": ONNXModelAnalyzer.get_node_depth(node.name, node_parent)
                                 } for node in nodes
                             ]}
 
