@@ -1,4 +1,3 @@
-import argparse
 import csv
 import os
 import json
@@ -44,34 +43,43 @@ class ONNXModelAnalyzer:
             # Write model information in the given format
             if show_node_details:
                 # Calculate input size (MB)
-                input_size = sum(numpy.prod(input_info['shape']) for input_info in output_info['inputs']) * 4 / (
-                        1024 * 1024)
+                input_size = sum(numpy.prod(input_info['shape']) for input_info in output_info['inputs']) * 4 / (1024 * 1024)
 
-                forward_backward_pass_size = sum(
-                    numpy.prod(node_detail['output_shape']) for node_detail in output_info['node_details']) * 4 / (
-                                                     1024 * 1024)
+                forward_backward_pass_size = sum(numpy.prod(node_detail['output_shape']) for node_detail in output_info['node_details']) * 4 / (1024 * 1024)
 
                 # Calculate estimated total size (MB)
                 estimated_total_size = input_size + forward_backward_pass_size + output_info['summary']['model_size']
 
                 # Write model information in the given format
-                f.write(
-                    "=========================================================================================================\n")
+                f.write("=========================================================================================================\n")
                 f.write("Layer (type:depth-idx)                                  Output Shape              Param #\n")
-                f.write(
-                    "=========================================================================================================\n")
+                f.write("=========================================================================================================\n")
 
                 if "node_details" in output_info:
-                    for node_detail in output_info.get("node_details", []):
+                    sorted_node_details = sorted(output_info.get("node_details", []), key=lambda x: x['depth'])
+                    last_depth = -1
+                    for node_detail in sorted_node_details:
                         output_shape = str(node_detail['output_shape'])
                         param_num = node_detail['param_count']
-                        f.write(f"{node_detail['op_type']: <40} {output_shape: <30} {param_num: <10}\n")
-                f.write(
-                    "=========================================================================================================\n")
+                        depth = node_detail['depth']
+                        layer_name = node_detail['name']
+                        if depth > last_depth:
+                            indent = '│  ' * depth
+                            branch = '├─'
+                        elif depth == last_depth:
+                            indent = '│  ' * (depth - 1)
+                            branch = '├─'
+                        else:  # depth < last_depth
+                            indent = '│  ' * depth
+                            branch = '└─'
+                        last_depth = depth
+                        op_type_str = f"{node_detail['op_type']} (d={depth}):"
+                        param_num_str = f"{param_num: <6}"
+                        f.write(f"{indent}{branch}{op_type_str: <18} {layer_name: <20} {output_shape: <25} {param_num_str}\n")
+                f.write("=========================================================================================================\n")
                 f.write(f"Total params: {output_info['summary']['num_params']}\n")
                 f.write(f"Trainable params: {output_info['summary']['num_params']}\n")
                 f.write("Non-trainable params: 0\n")
-                f.write("Total mult-adds (M): TODO\n")
                 f.write(
                     "=========================================================================================================\n")
                 f.write(f"Input size (MB): {input_size:.2f}\n")
@@ -162,8 +170,40 @@ class ONNXModelAnalyzer:
                         csv_writer.writerow(["node_details", node_detail['name'], f"{attr_name}: {attr_value}"])
         print(f"Model analysis saved to {output_file}.csv")
 
+
+    @staticmethod
+    def get_node_depth(node_name, node_parents, nodes_by_output, visited=None):
+        '''
+        get node depth
+        :param node_name:
+        :param node_parents:
+        :param nodes_by_output:
+        :param visited:
+        :return:
+        '''
+        if visited is None:
+            visited = set()
+        if node_name in visited:
+            return 0
+        visited.add(node_name)
+        depth = 0
+        if node_name in node_parents:
+            parent_depths = [ONNXModelAnalyzer.get_node_depth(parent_name, node_parents, nodes_by_output, visited) for
+                             parent_name in node_parents[node_name]]
+            depth = max(parent_depths) + 1
+        return depth
+
     @staticmethod
     def print_node_structure(f, node_name, node_details, node_parent, depth=0):
+        '''
+        print node structure
+        :param f:
+        :param node_name:
+        :param node_details:
+        :param node_parent:
+        :param depth:
+        :return:
+        '''
         node_detail = node_details[node_name]
         f.write("─" * depth + f"{node_detail['op_type']} ({node_detail['name']})\n")
         for child_node_name in [node['name'] for node in node_details if node_parent[node['name']] == node_name]:
@@ -171,6 +211,14 @@ class ONNXModelAnalyzer:
 
     @staticmethod
     def analyze_onnx_model(onnx_file_path, save_to_file=False, output_file=None, show_node_details=False):
+        '''
+        analyze onnx model
+        :param onnx_file_path:
+        :param save_to_file:
+        :param output_file:
+        :param show_node_details:
+        :return:
+        '''
         if onnx_file_path is not None:
             if os.path.exists(onnx_file_path):
                 # Load ONNX model
@@ -209,16 +257,15 @@ class ONNXModelAnalyzer:
                 # Create a dictionary to find nodes by their output tensor names
                 nodes_by_output = {output_name: node for node in nodes for output_name in node.output}
 
-                # Calculate parent for each node
-                node_parent = {}
+                # Calculate parents for each node
+                node_parents = defaultdict(list)
                 for node in nodes:
                     for input_name in node.input:
-                        if input_name in node_params:
-                            node_parent[node.name] = nodes_by_output[input_name].name
-                            break
-                        else:
-                            node_parent[node.name] = None
-
+                        if input_name in nodes_by_output:
+                            node_parents[node.name].append(nodes_by_output[input_name].name)
+                print("Node parents:")
+                for node_name, parent_list in node_parents.items():
+                    print(f"{node_name}: {parent_list}")
                 # Count the number of nodes
                 node_count = len(nodes)
 
@@ -258,6 +305,7 @@ class ONNXModelAnalyzer:
                         "num_params": num_params,
                         "model_size": byte_to_mb(model_size)
                     },
+                    # "node_parents":node_parents,
                     "parameter_data_types": {dtype_name: count for dtype_name, count in dtype_count.items()},
                     "operators": {op_type: {"count": count, "percentage": op_percentage[op_type]} for op_type, count in
                                   op_count.items()}, "operators_list": list(op_count.keys()),
@@ -275,7 +323,10 @@ class ONNXModelAnalyzer:
                                     "outputs": [output_name for output_name in node.output],
                                     "attributes": {attr.name: str(attr) for attr in node.attribute},
                                     "output_shape": [dim.dim_value for dim in value_info[node.output[0]].type.tensor_type.shape.dim] if node.output[0] in value_info else [],
-                                    "param_count": node_params[node.name]
+                                    # "param_count": node_params[node.name]
+                                    "param_count": node_params[node.name],
+                                    "depth": ONNXModelAnalyzer.get_node_depth(node.name, node_parents, nodes_by_output)
+                                    # "depth": ONNXModelAnalyzer.get_node_depth(node.name, node_parent)
                                 } for node in nodes
                             ]}
 
@@ -312,9 +363,7 @@ def main():
     print(f"{logo_str}\n")
     model_path = "../ckpts/yolov5/yolov5x6.onnx"
     output_file = "../weights/yolov5/yolov5x6"
-    ONNXModelAnalyzer.analyze_onnx_model(model_path, save_to_file=True, output_file=output_file,
-                                         show_node_details=False)
-
+    ONNXModelAnalyzer.analyze_onnx_model(model_path, save_to_file=True, output_file=output_file,show_node_details=False)
 
 if __name__ == '__main__':
     main()

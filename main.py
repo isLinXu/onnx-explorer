@@ -18,8 +18,10 @@ if __name__ == '__main__':
     parser.add_argument("-m","--model-path", help="Path to the ONNX model file.")
     parser.add_argument("-s", "--save", action="store_true", help="Save analysis to a text file.")
     parser.add_argument("-o", "--output-path", help="Path to the output text file.")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Show node details.")
     args = parser.parse_args()
     model_path = args.model_path
     save_to_file = args.save
     output_file = args.output_path
-    ONNXModelAnalyzer.analyze_onnx_model(model_path, save_to_file=save_to_file, output_file=output_file, show_node_details=False)
+    show_node_details = args.verbose
+    ONNXModelAnalyzer.analyze_onnx_model(model_path, save_to_file=save_to_file, output_file=output_file, show_node_details=show_node_details)
